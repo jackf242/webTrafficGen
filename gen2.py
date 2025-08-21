@@ -1,3 +1,11 @@
+#
+# Things to examine:
+#
+# url_list <-- Set this with your own values. Ask for permission first.
+# max_workers <-- tune to your cpus, 50-100 works well with 8vCPUs
+# methods <-- if your server supports you can enable POST and/or DELETE here
+#
+
 import requests
 import random
 import time
