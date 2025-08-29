@@ -9,6 +9,7 @@
 import requests
 import random
 import time
+import dns.resolver
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from concurrent.futures import ThreadPoolExecutor
@@ -69,6 +70,19 @@ url_list = [
     "http://ast50.demo.f5"
 ]
 
+# Example usage:
+domain_name = 'example.com'
+print('A record:', dns_query(domain_name, 'A'))
+print('MX record:', dns_query(domain_name, 'MX'))
+print('TXT record:', dns_query(domain_name, 'TXT'))
+
+def dns_query(domain, record_type='A'):
+    try:
+        answers = dns.resolver.resolve(domain, record_type)
+        return [answer.to_text() for answer in answers]
+    except Exception as e:
+        return [f"Error: {str(e)}"]
+
 def send_request(i):
     url = random.choice(url_list)
     headers = {
@@ -96,7 +110,12 @@ def send_request(i):
 total_requests = 10000
 max_workers = 75  # 50-100-ish, tune based on vCPU
 
-while True: # run indefinitely
+while True:
+    # Extract domains from url_list for DNS query
+    domains_to_query = [url.split("//")[-1].split("/")[0] for url in url_list]
+    for domain in set(domains_to_query):
+        a_record = dns_query(domain, 'A')
+        print(f'DNS A record for {domain}:', a_record)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         executor.map(send_request, range(total_requests))
     time.sleep(3)
