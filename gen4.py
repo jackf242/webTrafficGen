@@ -70,17 +70,17 @@ url_list = [
 
 # ===== NEW: error URLs with weights =====
 error_urls = [
-    ("http://10.1.10.70/400", 3),  # medium
-    ("http://10.1.10.70/401", 3),  # medium
-    ("http://10.1.10.70/403", 1),  # least
-    ("http://10.1.10.70/404", 6),  # most
+    ("https://10.1.10.70/400", 3),  # medium
+    ("https://10.1.10.70/401", 3),  # medium
+    ("https://10.1.10.70/403", 1),  # least
+    ("https://10.1.10.70/404", 6),  # most
 ]
 
 weighted_error_urls = []
 for url, weight in error_urls:
     weighted_error_urls.extend([url] * weight)
 
-ERROR_REQUEST_INTERVAL_SECONDS = 1.0  # ~1 error hit per second
+ERROR_REQUEST_INTERVAL_SECONDS = 4.0  # ~1 error hit per second
 
 # Pre-generate random XFFs to avoid per-request
 XFF_POOL = [
