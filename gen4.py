@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import requests
 import random
 import time
@@ -59,13 +60,27 @@ url_list = [
     "https://ast.demo.f5",
     "https://ast.demo.f5",
     "https://ast50.demo.f5",
-    "http://ast55.demo.f5",
+    "https://ast55.demo.f5",
     "https://ast42.demo.f5",
     "https://ast66.demo.f5",
     "http://ast50.demo.f5",
     "https://sslo.demo.f5",
     "https://anotherapp.demo.f5"
 ]
+
+# ===== NEW: error URLs with weights =====
+error_urls = [
+    ("http://10.1.10.70/400", 3),  # medium
+    ("http://10.1.10.70/401", 3),  # medium
+    ("http://10.1.10.70/403", 1),  # least
+    ("http://10.1.10.70/404", 6),  # most
+]
+
+weighted_error_urls = []
+for url, weight in error_urls:
+    weighted_error_urls.extend([url] * weight)
+
+ERROR_REQUEST_INTERVAL_SECONDS = 1.0  # ~1 error hit per second
 
 # Pre-generate random XFFs to avoid per-request
 XFF_POOL = [
@@ -106,11 +121,31 @@ def send_request(i):
         if i % LOG_EVERY == 0:
             print(f"Request {i+1} failed: {e}")
 
+def send_error_request(i):
+    url = random.choice(weighted_error_urls)
+    try:
+        response = session.get(url, timeout=5, verify=False)
+        print(f"Error {i+1}: GET {url} -- Status: {response.status_code}")
+    except Exception as e:
+        print(f"Error {i+1}: GET {url} failed: {e}")
+
 # Number of requests and concurrent threads (adjust as needed)
 total_requests = 4000
 max_workers = 80  # tune based on vCPU
 
+error_counter = 0
+last_error_ts = 0.0
+
 while True:  # run indefinitely
+    # normal traffic batch
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         executor.map(send_request, range(total_requests))
+
+    # one error request per ~second (loop granularity is coarse, but simple)
+    now = time.time()
+    if now - last_error_ts >= ERROR_REQUEST_INTERVAL_SECONDS:
+        error_counter += 1
+        send_error_request(error_counter)
+        last_error_ts = now
+
     time.sleep(3)
