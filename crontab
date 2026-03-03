@@ -11,6 +11,8 @@
 # >>>                                              <<<
 @reboot /usr/bin/python3 /home/ubuntu/scripts/gen4.py > /dev/null
 @reboot /usr/bin/python3 /home/ubuntu/scripts/gen_waf.py > /dev/null
+# Generate APM traffic
+@reboot /usr/bin/python3 /home/ubuntu/scripts/gen_apm.py > /dev/null
 # Creates delay (3s) nginx server member / pool member on port 8420
 @reboot /usr/bin/python3 /home/ubuntu/scripts/delay_server.py > /dev/null
 # >>>                                              <<<
