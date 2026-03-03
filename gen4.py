@@ -67,6 +67,7 @@ url_list = [
     "http://ast50.demo.f5",
     "https://sslo.demo.f5",
     "https://accounts.demo.f5",
+    "https://ast80.demo.f5:9443",
     "https://watchmen.demo.f5:8443",
     "https://anotherapp.demo.f5"
 ]
