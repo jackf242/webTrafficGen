@@ -13,10 +13,10 @@ USERS = [
     ("user2", "user2"),
     ("user3", "user3"),
     ("user4", "user4"),
-    ("user5", "user5"),
-    ("user6", "user6"),
-    ("user7", "user7"),
-    ("user8", "user8"),
+    # add up to 7 if you like:
+    # ("user5", "user5"),
+    # ("user6", "user6"),
+    # ("user7", "user7"),
 ]
 
 def login(username, password):
@@ -31,24 +31,33 @@ def login(username, password):
         "username": username,
         "password": password,
     }
-    s.post(f"{BASE}/my.policy", data=payload, allow_redirects=True)
+    r = s.post(f"{BASE}/my.policy", data=payload, allow_redirects=True)
 
-    print(username, "cookies:", s.cookies.get_dict())
+    print(f"[login] {username} status={r.status_code} cookies={s.cookies.get_dict()}")
     return s
 
-# create N sessions (1 per user)
-sessions = [login(u, p) for (u, p) in USERS]
+# map username -> session
+sessions = {u: login(u, p) for (u, p) in USERS}
 
 i = 0
 while True:
-    # pick a random logged-in session
-    s = random.choice(sessions)
+    user, pwd = random.choice(USERS)
+    s = sessions[user]
 
     # send one request from that “user”
-    r = s.get(f"{BASE}/protected/page",
-              headers={"User-Agent": "apm-loadgen-python"})
-    print(i, r.status_code, "from", s.cookies.get("MRHSession"))
-    i += 1
+    r = s.get(
+        f"{BASE}/protected/page",
+        headers={"User-Agent": "apm-loadgen-python"},
+        allow_redirects=True,
+    )
 
-    # sleep so overall rate stays ~5–15 per minute
+    # if we got bumped back to my.policy, the APM session probably expired -> re-login
+    if "/my.policy" in r.url:
+        print(f"[relogin] session expired for {user}, re-authenticating")
+        sessions[user] = login(user, pwd)
+    else:
+        print(i, r.status_code, "user=", user, "MRHSession=", s.cookies.get("MRHSession"))
+        i += 1
+
+    # overall rate ~5–15 reqs/min across all sessions
     time.sleep(random.randint(4, 12))
